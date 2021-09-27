@@ -17,8 +17,11 @@
 package com.example.android.trackmysleepquality.sleeptracker
 
 import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.*
 import com.example.android.trackmysleepquality.database.SleepDatabaseDao
+import com.example.android.trackmysleepquality.database.SleepNight
+import com.example.android.trackmysleepquality.formatNights
+import kotlinx.coroutines.launch
 
 /**
  * ViewModel for SleepTrackerFragment.
@@ -26,5 +29,47 @@ import com.example.android.trackmysleepquality.database.SleepDatabaseDao
 class SleepTrackerViewModel(
         val database: SleepDatabaseDao,
         application: Application) : AndroidViewModel(application) {
+
+        private var tonight = MutableLiveData<SleepNight?>()
+
+        private var nights = database.getAllNight()
+
+        val nightsString = Transformations.map(nights) {
+                nights ->
+                formatNights(nights, application.resources)
+        }
+
+        init {
+            initializeTonight()
+        }
+
+        private fun initializeTonight() {
+                viewModelScope.launch {
+                        tonight.value = getTonightFromDatabase()
+                }
+
+        }
+
+        private suspend fun getTonightFromDatabase(): SleepNight? {
+                var night = database.getToNight()
+                // caso o horario de inicio seja diferente do fim significa que a night ja foi preenchida.
+                if(night?.endTimeMilli != night?.startTimeMilli){
+                        night = null
+                }
+                return night
+        }
+
+        fun onStartTracking(){
+                viewModelScope.launch {
+                        val newNight = SleepNight()
+                        insert(newNight)
+                }
+        }
+
+        private suspend fun insert(newNight: SleepNight) {
+                database.insert(newNight)
+                tonight.value = newNight
+        }
+
 }
 
