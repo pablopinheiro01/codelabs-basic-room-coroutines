@@ -15,3 +15,44 @@
  */
 
 package com.example.android.trackmysleepquality.database
+
+import android.content.Context
+import android.os.Parcel
+import android.os.Parcelable
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+
+@Database(entities = [SleepNight::class], version = 1, exportSchema = false)
+abstract class SleepDatabase() : RoomDatabase() {
+
+    abstract val sleepDatabaseDao: SleepDatabaseDao
+
+    companion object{
+
+        @Volatile
+        private var INSTANCE: SleepDatabase? = null
+
+        fun getInstance(context: Context): SleepDatabase {
+            //garante que só entre nesse bloco uma thread por vez, evitando o uso de 2 bancos de dados distintos e garantindo
+            //a integridade do aplicativo
+            synchronized(this){
+                var instance = INSTANCE
+                if(instance == null){
+                    instance = Room.databaseBuilder(
+                        context.applicationContext,
+                        SleepDatabase::class.java,
+                        "sleep_history_database"
+                    )
+                            //fallback garante que seja destruido a nossa base e criada uma nova se ocorrer uma nova mudança
+                        .fallbackToDestructiveMigration()
+                        .build()
+                    INSTANCE = instance
+                }
+                return instance
+            }
+        }
+
+    }
+
+}
